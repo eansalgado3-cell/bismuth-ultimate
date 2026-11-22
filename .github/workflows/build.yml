@@ -1,0 +1,32 @@
+name: Build Bismuth Ultimate
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Build Windows x64 .geode
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build with official Geode action
+        id: build
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          sdk: v5.11.2
+          cli: v4.0.2
+          target: Win64
+          build-config: Release
+      - name: Upload .geode artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bismuth-Ultimate-Windows-x64
+          path: ${{ steps.build.outputs.build-output }}
+          if-no-files-found: error
+          retention-days: 14

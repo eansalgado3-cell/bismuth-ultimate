@@ -1,0 +1,9 @@
+{
+  "geode": "5.11.2",
+  "gd": { "win": "2.2081" },
+  "id": "bismuth-ultimate",
+  "name": "Bismuth Ultimate",
+  "version": "v0.1.0-alpha.1",
+  "developer": "eansalgado3-cell",
+  "description": "A performance diagnostics and optimization toolkit for Geometry Dash."
+}
