@@ -7,8 +7,376 @@
   "name": "NEXUS Ultimate",
   "version": "v0.2.0-alpha.1",
   "developer": "eansalgado3-cell",
-  "description": "Independent performance toolkit for Geometry Dash 2.2081: render fast paths, batch filtering, particle controls, frame pacing and diagnostics.",
+  "description": "NEXUS Ultimate is an independent rendering and frame-pacing toolkit for Geometry Dash 2.2081. It provides visibility fast-outs, batched-object filtering, particle controls, optional low-latency queue draining, Windows pacing controls and a live performance overlay. Physics and game input handling are not modified.",
+  "tags": [
+    "performance",
+    "utility"
+  ],
   "links": {
     "source": "https://github.com/eansalgado3-cell/bismuth-ultimate"
+  },
+  "settings": {
+    "title-general": {
+      "type": "title",
+      "name": "General"
+    },
+    "profile": {
+      "name": "Profile",
+      "description": "Balanced is the default: optimized renderer, the per-quad batch filter, particle culling, scene culling off because GD batches level objects, editor culling on. Default keeps the engine renderer and full particle effects. Performance lowers the particle cap and adds the conservative scene cull; Extreme goes further. Editing a profile-owned setting switches to Custom. Nothing here changes physics, input handling or the game's FPS cap.",
+      "type": "string",
+      "default": "Balanced",
+      "one-of": [
+        "Custom",
+        "Default",
+        "Balanced",
+        "Performance",
+        "Extreme"
+      ]
+    },
+    "enabled": {
+      "name": "Enable NEXUS Ultimate",
+      "description": "Master switch. Off restores the game's normal draw path immediately, without a restart.",
+      "type": "bool",
+      "default": true
+    },
+    "target-fps": {
+      "name": "Target FPS",
+      "description": "The frame rate you want to hold, usually your monitor's refresh rate. Used only to color the overlay and to pick the frame-time thresholds. It does not change the game's FPS cap.",
+      "type": "int",
+      "min": 20,
+      "max": 360,
+      "default": 60
+    },
+    "title-rendering": {
+      "type": "title",
+      "name": "Rendering"
+    },
+    "renderer-mode": {
+      "name": "Renderer Mode",
+      "description": "Engine: every draw call goes through the unmodified game renderer; the mod only measures. Optimized: the mod's draw hooks run - zero-pixel sprites, empty batch nodes, eligible off-screen particles and non-visible quads inside batched level objects are not submitted. Draw order, blending, glow, clipping, shaders and transforms are never changed. This is not a replacement rendering backend.",
+      "type": "string",
+      "default": "Optimized",
+      "one-of": [
+        "Engine",
+        "Optimized"
+      ]
+    },
+    "sprite-fast-path": {
+      "name": "Sprite Draw Fast-Out",
+      "description": "Skips the draw call for sprites that cannot produce any pixel: opacity 0, zero scale on an axis, or an empty content size. Children are still drawn normally, so the image is unchanged. On by default.",
+      "type": "bool",
+      "default": true
+    },
+    "skip-idle-particles": {
+      "name": "Skip Idle Particle Draws",
+      "description": "Does not issue a draw for particle systems that have no live particles. Looks exactly the same and is free to keep on.",
+      "type": "bool",
+      "default": true
+    },
+    "cull-offscreen-particles": {
+      "name": "Skip Off-Screen Particles",
+      "description": "Does not draw particle systems whose live AABB does not touch the screen. The box is measured every frame from the actual particle positions (relative and grouped systems), expanded by particle size; the emitter-on-screen case costs one circle test. Free systems are always drawn. Particles keep updating, so emission timing and motion are unchanged when they scroll back.",
+      "type": "bool",
+      "default": true
+    },
+    "particle-cull-mode": {
+      "name": "Particle Culling Mode",
+      "description": "Conservative keeps 128 world units of margin around the screen, so a system is only skipped when it cannot come into view before the next frame. Aggressive keeps 8 units and skips more: use it to see how much draw work culling removes, not on a level where you care about the edges. Draw-only either way; simulation is never skipped.",
+      "type": "string",
+      "default": "Conservative",
+      "one-of": [
+        "Off",
+        "Conservative",
+        "Aggressive"
+      ],
+      "enable-if": "cull-offscreen-particles"
+    },
+    "scene-cull": {
+      "name": "Scene Object Culling",
+      "description": "Gameplay-only scene culling for unbatched sprites. Skips a draw when the sprite's whole quad is outside the viewport plus a margin (160 conservative, 16 aggressive). Off by default because GD batches level objects. The Level Editor has its own separate policy under Editor Culling.",
+      "type": "string",
+      "default": "Off",
+      "one-of": [
+        "Off",
+        "Conservative",
+        "Aggressive"
+      ]
+    },
+    "batch-culling": {
+      "name": "Batch Object Filtering",
+      "description": "Filters individual quads inside batched level objects, the path GD actually uses. The batch keeps its single GL draw, its blend state and its atlas order; quads that cannot produce a pixel (GD-hidden objects with zero area, or quads fully outside the clip volume plus a small margin) are left out of the index list. Only the stock level shader is filtered - a custom shader or an active grid always draws untouched, unless you turn on the Custom Shader Filter. The scan is capped at 65,536 quads per frame and reads the same vertices the original draw would upload. On by default; turn it off to see the unfiltered draw path. Draw-only; nothing is re-batched, reordered or rewritten.",
+      "type": "bool",
+      "default": true
+    },
+    "custom-shader-filter": {
+      "name": "Custom Shader Filter",
+      "description": "Also filter batch quads when the batch's program is a fragment-only effect whose vertex stage is byte-identical to the engine's stock PositionTextureColor program (the shape GD's shader library uses; the level is still drawn exactly once). A custom vertex stage that could move vertices is never judged by its original positions, so that batch draws untouched. Resolved per frame on Windows; any doubt falls back to the original draw. On by default; requires Batch Object Filtering. No visual change is intended or claimed - fail-open gates only.",
+      "type": "bool",
+      "default": true
+    },
+    "gpu-batch-cull": {
+      "name": "GPU Batch Filter (experimental)",
+      "description": "Batch Object Filtering, but with the scan moved onto the GPU. While on, batches larger than 1024 quads are tested by a GL 4.3 compute shader that reads the atlas vertex buffer directly and emits the surviving quads' indices; the draw is submitted with glDrawElementsIndirect, so no GPU result is ever read back by the CPU. Smaller batches use the normal CPU filter, and anything that fails - a pre-4.3 context, a missing entry point, a shader build error, a non-screen-space projection - falls back to the CPU filter with nothing drawn twice. Requires Batch Object Filtering. Windows only, off by default: it is not verified in-game yet, and for small levels one dispatch costs more than the scan it replaces.",
+      "type": "bool",
+      "platforms": [
+        "win"
+      ],
+      "default": false,
+      "enable-if": "batch-culling"
+    },
+    "gpu-frame-time": {
+      "name": "GPU Frame Time (GL_TIME_ELAPSED)",
+      "description": "Measures the GPU time of the submitted frame with a GL timer query and shows it on the Detailed overlay ('gpu'). Measurement only: it never changes GL state, and the result is read back one frame late with a non-blocking availability check (the frame path never waits on the GPU). Windows only.",
+      "type": "bool",
+      "platforms": [
+        "win"
+      ],
+      "default": true
+    },
+    "shader-trace": {
+      "name": "Shader Trace (diagnostic)",
+      "description": "Diagnostic counters, never changes behavior. While on, every CCGLProgram::use call is counted (total and redundant, validated against live GL state) and per-batch program binds are tracked. Every 5 seconds the Geode log gets two lines: one with bind totals and the top 5 GL program objects, and a 'gd-trace' line with CPU times for PlayLayer/LevelEditorLayer visibility, updateShaderLayer, ShaderLayer::visit and the batch quad scan. Used to find out which part of a 2.2 shader level actually costs time. Off by default; turn it off after collecting the log.",
+      "type": "bool",
+      "platforms": [
+        "win"
+      ],
+      "default": false
+    },
+    "shader-state-cache": {
+      "name": "Skip Redundant Program Binds (retired)",
+      "description": "Inert since v2.4.0. cocos2d already routes every program bind through ccGLUseProgram's internal state cache, so the extra cache this setting used to enable was redundant and its per-bind GL query cost more than it saved. Kept only so existing settings files stay valid; the value does nothing.",
+      "type": "bool",
+      "platforms": [
+        "win"
+      ],
+      "default": false
+    },
+    "particle-suppression": {
+      "name": "Suppress Off-Screen Particle Simulation",
+      "description": "Skips update() entirely for particle systems whose live particles are fully outside the expanded viewport: no emission, no integration, no quad rebuild, no draws - zero work. Particle state freezes off screen and resumes untouched when the emitter scrolls back into view; nothing is deleted mid-frame. Relative and Grouped systems only; Free systems always simulate. Margin follows the particle cull mode. Off by default.",
+      "type": "bool",
+      "default": false
+    },
+    "cap-particles": {
+      "name": "Cap Particle Pool Size",
+      "description": "Limits how many particles one system can hold. The pool, quad and index buffers are allocated for the capped size, so nothing can index out of bounds. Only affects systems created after the change: re-enter the level.",
+      "type": "bool",
+      "default": true
+    },
+    "particle-cap": {
+      "name": "Particle Cap",
+      "description": "Maximum particles per system. 256 is close to normal, 128 trims extreme particle spam, 32 is aggressive. Thin effects are the only visual cost.",
+      "type": "int",
+      "min": 4,
+      "max": 1000,
+      "default": 128,
+      "enable-if": "cap-particles"
+    },
+    "spawn-budget": {
+      "name": "Particle Spawn Budget",
+      "description": "How many particle systems per frame get a full pool during a level. 0 is off. Systems past the budget still exist but get a pool of 4, so a burst of effects looks thinner instead of stalling the frame.",
+      "type": "int",
+      "min": 0,
+      "max": 200,
+      "default": 0
+    },
+    "adaptive-cap": {
+      "name": "Adaptive Particle Cap",
+      "description": "Experimental and off by default. While drawn frames stay slower than the Target FPS, the particle pool is lowered in steps (never below 24) and logged; it relaxes back to the configured cap when frames recover. Only affects systems created afterwards, so the effect appears as new effects spawn. It never changes timing, physics or input.",
+      "type": "bool",
+      "default": false,
+      "enable-if": "cap-particles"
+    },
+    "title-input": {
+      "type": "title",
+      "name": "Input"
+    },
+    "no-input-delay": {
+      "name": "No Additional Input Delay",
+      "description": "Moves every piece of NEXUS Ultimate bookkeeping out of the pre-update part of the frame: the scheduler counter runs after the game's update, and overlay statistics and the Win32 focus probe run after the scene is drawn. The mod then executes no instrumentation before the game processes input and simulation. Ordering change only: it does not modify game input code, physics or the FPS cap, and no hardware latency measurement is claimed.",
+      "type": "bool",
+      "default": true
+    },
+    "low-latency": {
+      "name": "Low Latency (drain GPU queue)",
+      "description": "Calls glFinish() once the frame has been submitted, so the driver cannot keep several frames queued ahead of the display and a click is not stuck behind them. Off by default. Honest trade-off: with vsync on, the buffer swap already blocks, so this mostly adds a driver flush and wait - the gain is clearest when the game is not vsync-bound, and it can cost average frame rate, especially on hybrid or Optimus laptops. It does not touch physics, timing or the game's FPS cap. Windows only: the drain is compiled into the Windows draw path.",
+      "type": "bool",
+      "default": false
+    },
+    "title-editor": {
+      "type": "title",
+      "name": "Level Editor"
+    },
+    "editor-culling": {
+      "name": "Editor Culling",
+      "description": "Draw-only visibility and particle culling while the editor is open, plus the per-quad batch filter when it is enabled. Object data, selection, dragging, undo, copy/paste, triggers and saving are never touched. The Detailed overlay shows the real counters.",
+      "type": "bool",
+      "default": true
+    },
+    "editor-cull-mode": {
+      "name": "Editor Culling Mode",
+      "description": "Conservative keeps 160 world units around the viewport; Aggressive keeps 16. Both are draw-only. The editor has its own policy and does not inherit the gameplay scene-cull setting.",
+      "type": "string",
+      "default": "Conservative",
+      "one-of": [
+        "Off",
+        "Conservative",
+        "Aggressive"
+      ],
+      "enable-if": "editor-culling"
+    },
+    "title-pacing": {
+      "type": "title",
+      "name": "Frame Pacing (Windows)",
+      "platforms": [
+        "win"
+      ]
+    },
+    "render-gate": {
+      "name": "Render Gate (experimental)",
+      "description": "Experimental and OFF by default. Draws at Render FPS while the scheduler keeps the game's normal rate, so physics, collision and input processing still run every tick. Only useful above the display refresh rate (uncapped FPS). It delays what you see by up to one render interval, so leave it off if you want the most direct visual feedback. Do not use it together with mat.draw-divide.",
+      "type": "bool",
+      "default": false,
+      "platforms": [
+        "win"
+      ]
+    },
+    "render-gate-fps": {
+      "name": "Render FPS",
+      "description": "Draw rate while the Render Gate is on. Set it to your monitor refresh rate.",
+      "type": "int",
+      "min": 30,
+      "max": 360,
+      "default": 60,
+      "platforms": [
+        "win"
+      ],
+      "enable-if": "render-gate"
+    },
+    "background-throttle": {
+      "name": "Throttle Drawing In Background",
+      "description": "While the game window is not focused, draw at Background FPS. Logic and audio keep running normally. Turn off if you record the game with window capture while it is unfocused.",
+      "type": "bool",
+      "default": true,
+      "platforms": [
+        "win"
+      ]
+    },
+    "background-fps": {
+      "name": "Background FPS",
+      "description": "Draw rate while the game window is not focused.",
+      "type": "int",
+      "min": 1,
+      "max": 60,
+      "default": 20,
+      "platforms": [
+        "win"
+      ],
+      "enable-if": "background-throttle"
+    },
+    "title-system": {
+      "type": "title",
+      "name": "System (Windows)",
+      "platforms": [
+        "win"
+      ]
+    },
+    "timer-resolution": {
+      "name": "1 ms Timer Resolution",
+      "description": "Asks Windows for 1 ms timer wakeups instead of about 15.6 ms, which reduces uneven frame pacing when the game waits for the next frame. Slightly higher idle power use. Undone when switched off.",
+      "type": "bool",
+      "default": true,
+      "platforms": [
+        "win"
+      ]
+    },
+    "disable-power-throttling": {
+      "name": "Disable Power Throttling",
+      "description": "Opts the game process out of Windows efficiency mode (EcoQoS) so it is not moved to slow cores or low clocks. Useful on laptops and Windows 11.",
+      "type": "bool",
+      "default": true,
+      "platforms": [
+        "win"
+      ]
+    },
+    "process-priority": {
+      "name": "Process Priority",
+      "description": "Above Normal is safe. High can starve OBS or Discord. Applied immediately, no restart needed.",
+      "type": "string",
+      "default": "Normal",
+      "one-of": [
+        "Normal",
+        "Above Normal",
+        "High"
+      ],
+      "platforms": [
+        "win"
+      ]
+    },
+    "title-monitor": {
+      "type": "title",
+      "name": "Monitor"
+    },
+    "show-overlay": {
+      "name": "Performance Overlay",
+      "description": "Shows FPS, average and p95 frame time, 1% low, logic updates per second, CPU time inside the draw call and the skip counters. Updated four times a second; it creates no nodes per frame.",
+      "type": "bool",
+      "default": true
+    },
+    "benchmark-seconds": {
+      "name": "Benchmark Duration",
+      "description": "Inert since v2.3.0. The custom panel (with the benchmark it started) was removed; this setting is kept only so existing settings files stay valid.",
+      "type": "int",
+      "min": 3,
+      "max": 60,
+      "default": 10
+    },
+    "overlay-detail": {
+      "name": "Overlay Detail",
+      "description": "Compact shows FPS, average frame time and 1% low. Detailed adds frame-time p95, logic rate, draw CPU time, the bottleneck hint and the skipped-draw counters. 'draw ms' is CPU time inside the draw hook, not GPU time.",
+      "type": "string",
+      "default": "Compact",
+      "one-of": [
+        "Compact",
+        "Detailed"
+      ],
+      "enable-if": "show-overlay"
+    },
+    "overlay-corner": {
+      "name": "Overlay Corner",
+      "description": "Where the overlay is drawn. Top Right is the default because the level HUD uses the top-left corner for the attempt counter.",
+      "type": "string",
+      "default": "Top Right",
+      "one-of": [
+        "Top Left",
+        "Top Right",
+        "Bottom Left",
+        "Bottom Right"
+      ],
+      "enable-if": "show-overlay"
+    },
+    "overlay-scale": {
+      "name": "Overlay Scale",
+      "description": "Size of the overlay text.",
+      "type": "float",
+      "min": 0.2,
+      "max": 2,
+      "default": 0.5,
+      "enable-if": "show-overlay"
+    },
+    "overlay-opacity": {
+      "name": "Overlay Opacity",
+      "description": "Opacity of the overlay text, 20 to 255.",
+      "type": "int",
+      "min": 20,
+      "max": 255,
+      "default": 200,
+      "enable-if": "show-overlay"
+    }
+  },
+  "resources": {
+    "sprites": [
+      "resources/*.png"
+    ]
   }
 }
