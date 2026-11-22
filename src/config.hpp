@@ -34,24 +34,24 @@ namespace nexus {
 
         // Renderer mode. False = the game's draw path is taken unchanged for every node;
         // true = NEXUS Ultimate's draw path (fast-outs + culling) is active.
-        bool rendererOptimized = true;
+        bool rendererOptimized = false;
 
         // Rendering fast paths.
-        bool spriteFastPath = true;      // skip draw() for sprites that cannot produce pixels
-        bool skipIdleParticles = true;   // skip draw() for particle systems with no live particles
-        bool cullOffscreenParticles = true;
-        CullMode particleCull = CullMode::Conservative;
-        CullMode sceneCull = CullMode::Conservative;
+        bool spriteFastPath = false;      // skip draw() for sprites that cannot produce pixels
+        bool skipIdleParticles = false;   // skip draw() for particle systems with no live particles
+        bool cullOffscreenParticles = false;
+        CullMode particleCull = CullMode::Off;
+        CullMode sceneCull = CullMode::Off;
         // Per-quad filtering inside CCSpriteBatchNode::draw, the path GD uses for level
         // objects. The batch keeps its single GL draw, blend state and atlas order, but
         // quads that cannot produce a pixel (zero area or fully off-screen) are left out of
         // the index list. Draw-only, fail-open; see rendering.cpp section 4.
-        bool batchCulling = true;
+        bool batchCulling = false;
         // Custom-shader extension to the batch filter: a batch's custom program is filtered
         // only when its vertex stage is byte-identical to the stock PositionTextureColor
         // program's vertex stage (the shape of fragment-only effects). Anything else draws
         // untouched. Win64-only; on other targets only the stock program is filtered.
-        bool customShaderFilter = true;
+        bool customShaderFilter = false;
         // GPU per-quad batch filter (experimental, opt-in, Windows only): the same scan the
         // CPU filter performs, run as a GL 4.3 compute shader over the atlas vertex VBO, with
         // the result submitted through glDrawElementsIndirect. Only batches larger than 1024
@@ -67,17 +67,17 @@ namespace nexus {
         bool gpuFrameTime = true;
         double particleCullMargin = 96.0;   // world units kept around the viewport
         double sceneCullMargin = 128.0;
-        bool capParticles = true;
+        bool capParticles = false;
         bool adaptiveCap = false;        // lowers the cap while drawn frames stay slow
-        unsigned int particleCap = 128;
+        unsigned int particleCap = 1000;
         unsigned int spawnBudget = 0;    // particle systems per frame that get a full pool; 0 = off
 
         // Editor-only culling. Applies the same draw-only visibility tests while the level
         // editor is open, independently of the gameplay scene/particle settings. Object data,
         // selection, serialization and editing callbacks are never touched.
-        bool editorCulling = true;
-        CullMode editorCull = CullMode::Conservative;
-        double editorCullMargin = 160.0;
+        bool editorCulling = false;
+        CullMode editorCull = CullMode::Off;
+        double editorCullMargin = 0.0;
 
         // No Additional Input Delay: moves every piece of mod bookkeeping out of the part of
         // the frame that runs before the game's scheduler update and scene draw. The mod then
@@ -96,7 +96,7 @@ namespace nexus {
         // running at the game's normal rate (or 20 fps while the window is unfocused).
         bool renderGate = false;
         double renderGateFps = 60.0;
-        bool backgroundThrottle = true;
+        bool backgroundThrottle = false;
         double backgroundFps = 20.0;
 
         // Monitor.
@@ -108,11 +108,11 @@ namespace nexus {
         double targetFps = 60.0;
 
         // System (Windows).
-        bool timerResolution = true;
-        bool disablePowerThrottling = true;
+        bool timerResolution = false;
+        bool disablePowerThrottling = false;
         Priority priority = Priority::Normal;
 
-        Profile profile = Profile::Balanced;
+        Profile profile = Profile::Default;
     };
 
     // Proof-of-work counters. Monotonic; the overlay shows deltas per second plus totals.
