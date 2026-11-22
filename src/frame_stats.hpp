@@ -10,8 +10,8 @@
 //   frameMs - wall time since the previous drawn frame (what the player sees)
 //   workMs  - CPU time spent inside the mod's CCDirector::drawScene hook, i.e. the scene
 //             traversal and the GL submission for that frame. This is a CPU-side number.
-//             It is NOT GPU time; the mod deliberately has no GPU timer because a blocking
-//             query would itself cost frames.
+//             GPU time is measured separately on Windows through a non-blocking query ring;
+//             unavailable results are never waited on.
 //
 // The ring buffer is fixed size, so memory use is bounded for the whole session. The
 // expensive parts (sorting for percentiles) only run when the overlay refreshes, four
