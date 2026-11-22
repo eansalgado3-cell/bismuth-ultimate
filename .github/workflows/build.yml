@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: nexus-windows-build
+  cancel-in-progress: true
+
 jobs:
   build-windows:
     name: Build Windows x64 .geode
