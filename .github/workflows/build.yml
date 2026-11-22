@@ -19,8 +19,8 @@ jobs:
         id: build
         uses: geode-sdk/build-geode-mod@main
         with:
-          sdk: latest
-          cli: latest
+          sdk: v5.11.2
+          cli: v4.0.2
           target: Win64
           build-config: Release
       - name: Upload .geode artifact
