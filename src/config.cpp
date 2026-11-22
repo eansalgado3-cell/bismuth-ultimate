@@ -44,7 +44,6 @@ namespace nexus {
         constexpr int kSlowWindowsToStep = 2;
         constexpr int kFastWindowsToStep = 6;
 
-        constexpr unsigned int kDefaultParticleCap = 128;
         constexpr int kDefaultBackgroundFps = 20;
 
         struct ProfileValues {
