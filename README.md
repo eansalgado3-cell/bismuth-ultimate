@@ -1,24 +1,12 @@
-# Bismuth Ultimate
+# NEXUS Ultimate
 
-Independent Geode mod project for Geometry Dash 2.2081 (Windows x64).
+Windows x64 performance mod for Geometry Dash 2.2081 using Geode 5.11.2.
 
-## Current status — v0.1.0-alpha.1
+This alpha includes sprite fast-outs, particle pool controls, off-screen/idle particle draw culling, CPU per-quad filtering for eligible batched level geometry, optional low-latency GPU queue draining, Windows frame pacing controls and an FPS/frame-time diagnostics overlay.
 
-This first build is a safe bootstrap that confirms Geode can load the mod. It logs a startup message and deliberately does not alter gameplay, physics, frame timing, rendering, particles, or input.
+No universal FPS gain is promised. Geometry Dash batches level objects; gains depend on level, driver and hardware. Use the overlay counters and compare the same section with features enabled and disabled. Physics and game input code are not modified. Some particle caps can thin visual effects; GPU queue draining can trade average FPS for responsiveness.
 
-## Build
+## Credits and license
+NEXUS Ultimate incorporates and adapts MIT-licensed code from Minimum Reborn by ziyyhhk. Attribution and the upstream MIT license are retained in LICENSE. The name, icon and project metadata are original to this project.
 
-GitHub Actions builds a Windows x64 .geode package using the official geode-sdk/build-geode-mod action. Open Actions, select Build Bismuth Ultimate, open the latest successful run, and download the Bismuth-Ultimate-Windows-x64 artifact.
-
-## Roadmap
-
-- [x] Geode project and Windows CI bootstrap
-- [ ] In-game performance diagnostics (frame-time percentiles and sampling)
-- [ ] Opt-in, independently configurable optimizations
-- [ ] Stress-test matrix and before/after benchmarks
-- [ ] Validate timing, input, replay and physics behavior
-
-No FPS improvement is claimed until it is benchmarked in Geometry Dash.
-
-
-Build workflow is configured for Windows x64 and can also be started manually from the GitHub Actions tab.
+Download the Windows `.geode` artifact from GitHub Actions.
