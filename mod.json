@@ -126,7 +126,7 @@
     },
     "gpu-frame-time": {
       "name": "GPU Frame Time (GL_TIME_ELAPSED)",
-      "description": "Measures the GPU time of the submitted frame with a GL timer query and shows it on the Detailed overlay ('gpu'). Measurement only: it never changes GL state, and the result is read back one frame late with a non-blocking availability check (the frame path never waits on the GPU). Windows only.",
+      "description": "Measures the GPU time of the submitted frame with a GL timer query and shows it on the Detailed overlay ('gpu'). Measurement only: it never changes draw state. A four-slot query ring reads results only after GL_QUERY_RESULT_AVAILABLE reports completion; if all slots are busy, that frame is not sampled. The frame path never waits on the GPU. Windows only.",
       "type": "bool",
       "platforms": [
         "win"
