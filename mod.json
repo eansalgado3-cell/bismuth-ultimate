@@ -22,9 +22,9 @@
     },
     "profile": {
       "name": "Profile",
-      "description": "Balanced is the default: optimized renderer, the per-quad batch filter, particle culling, scene culling off because GD batches level objects, editor culling on. Default keeps the engine renderer and full particle effects. Performance lowers the particle cap and adds the conservative scene cull; Extreme goes further. Editing a profile-owned setting switches to Custom. Nothing here changes physics, input handling or the game's FPS cap.",
+      "description": "Performance is the default: optimized renderer, per-quad batch filter, conservative scene and particle culling, and a 64-particle pool cap. Balanced uses a larger particle cap; Extreme is more aggressive and may thin effects. Scene culling cannot remove visible objects, so gains depend on level content and GPU/CPU bottlenecks. Editing a profile-owned setting switches to Custom.",
       "type": "string",
-      "default": "Balanced",
+      "default": "Performance",
       "one-of": [
         "Custom",
         "Default",
@@ -372,6 +372,13 @@
       "max": 255,
       "default": 200,
       "enable-if": "show-overlay"
+    },
+    "open-settings": {
+      "name": "Open NEXUS settings",
+      "description": "Open the NEXUS Ultimate settings popup. Default: F10. You can change this key in Geode mod settings.",
+      "type": "keybind",
+      "default": "F10",
+      "category": "universal"
     }
   },
   "resources": {
