@@ -1,5 +1,4 @@
 #include <Geode/Geode.hpp>
-#include <Geode/modify/PauseLayer.hpp>
 #include <Geode/ui/GeodeUI.hpp>
 #include <Geode/ui/OverlayManager.hpp>
 #include <algorithm>
@@ -14,10 +13,8 @@
 
 using namespace geode::prelude;
 
-// The custom panel was removed in v2.3.0. Every setting is edited on the native Geode
-// settings page, which the MR button on the pause layer opens directly; the panel this
-// file used to host was the only thing here. What remains is the performance overlay
-// (corner HUD) and the pause-layer button.
+// Settings are opened with the configurable F10 keybind. No pause-menu button is installed.
+// The performance overlay remains independent of the settings popup.
 
 namespace {
 
@@ -162,37 +159,6 @@ void openNexusSettings() {
     openSettingsPopup(Mod::get(), true);
 }
 
-void installPanelButton(CCNode* layer, CCNode* target, SEL_MenuHandler selector) {
-    float const width = 48.f;
-    auto* holder = CCNode::create();
-    holder->setContentSize({width, width});
-
-    if (auto* icon = CCSprite::create("icon-button.png"_spr)) {
-        float const h = icon->getContentSize().height;
-        icon->setScale(h > 0.f ? 34.f / h : 1.f);
-        icon->setPosition({width / 2.f, width / 2.f});
-        holder->addChild(icon, 1);
-    }
-
-    auto* button = CCMenuItemSpriteExtra::create(holder, target, selector);
-    if (!button) return;
-    button->setID("nexus-button"_spr);
-
-    auto* menu = CCMenu::create();
-    if (!menu) return;
-    menu->setID("nexus-menu"_spr);
-    menu->addChild(button);
-    menu->setPosition({0.f, 0.f});
-
-    auto* director = CCDirector::get();
-    auto const win = director->getWinSize();
-    auto const visible = director->getVisibleSize();
-    float const x = std::min(win.width / 2.f + 205.f, visible.width - 30.f);
-    float const y = std::max(win.height / 2.f - 11.f, 30.f);
-    button->setPosition({x, y});
-    menu->setTouchPriority(-600);
-    layer->addChild(menu, 100);
-}
 
 namespace nexus {
     void ensureHud(unsigned int totalFrames) {
@@ -209,13 +175,13 @@ namespace nexus {
     }
 }
 
-class $modify(NexusPauseLayer, PauseLayer) {
-    void customSetup() {
-        PauseLayer::customSetup();
-        installPanelButton(this, this, menu_selector(NexusPauseLayer::onOpenNexus));
-    }
-
-    void onOpenNexus(CCObject*) {
-        openNexusSettings();
-    }
-};
+$on_game(Loaded) {
+    listenForKeybindSettingPresses(
+        "open-settings",
+        [](Keybind const&, bool down, bool repeat, double) {
+            if (down && !repeat) {
+                openNexusSettings();
+            }
+        }
+    );
+}
