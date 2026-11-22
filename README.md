@@ -19,3 +19,6 @@ GitHub Actions builds a Windows x64 .geode package using the official geode-sdk/
 - [ ] Validate timing, input, replay and physics behavior
 
 No FPS improvement is claimed until it is benchmarked in Geometry Dash.
+
+
+Build workflow is configured for Windows x64 and can also be started manually from the GitHub Actions tab.
