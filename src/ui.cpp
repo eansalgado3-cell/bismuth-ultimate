@@ -1,4 +1,6 @@
 #include <Geode/Geode.hpp>
+#include <Geode/loader/GameEvent.hpp>
+#include <Geode/loader/SettingV3.hpp>
 #include <Geode/ui/GeodeUI.hpp>
 #include <Geode/ui/OverlayManager.hpp>
 #include <algorithm>
