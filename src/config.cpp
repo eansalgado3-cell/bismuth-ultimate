@@ -66,11 +66,13 @@ namespace nexus {
         // batch filter works inside the batched path instead. It removes only quads that
         // cannot produce a pixel, keeps atlas order and blend state, and is bounded by a
         // per-frame scan budget, so it is safe as a default rather than an opt-in extra.
+        // All profiles preserve the original game rendering while the engine
+        // profiling baseline is established. No level content is filtered or capped.
         constexpr ProfileValues kProfiles[] = {
-            {"Default",     256, 20, false, "Off",          "Off",          false},
-            {"Balanced",    128, 20, true,  "Off",          "Conservative", true},
-            {"Performance",  64, 15, true,  "Conservative", "Conservative", true},
-            {"Extreme",      32, 10, true,  "Aggressive",   "Aggressive",   true},
+            {"Default",     1000, 20, false, "Off", "Off", false},
+            {"Balanced",    1000, 20, false, "Off", "Off", false},
+            {"Performance", 1000, 15, false, "Off", "Off", false},
+            {"Extreme",     1000, 10, false, "Off", "Off", false},
         };
 
         char const* profileName(Profile profile) {
@@ -135,27 +137,28 @@ namespace nexus {
             if (!values) return;
 
             auto* mod = Mod::get();
-            mod->setSettingValue<std::string>(
-                "renderer-mode", values->rendererOptimized ? "Optimized" : "Engine"
-            );
-            mod->setSettingValue<bool>("sprite-fast-path", values->rendererOptimized);
-            mod->setSettingValue<bool>("skip-idle-particles", values->rendererOptimized);
-            mod->setSettingValue<bool>("cull-offscreen-particles", std::strcmp(values->particleCull, "Off") != 0);
-            mod->setSettingValue<std::string>("particle-cull-mode", values->particleCull);
-            mod->setSettingValue<std::string>("scene-cull", values->sceneCull);
-            mod->setSettingValue<bool>("batch-culling", values->batchCull);
-            mod->setSettingValue<bool>("cap-particles", true);
-            mod->setSettingValue<int64_t>("particle-cap", static_cast<int64_t>(values->particleCap));
+
+            // Safe baseline: preserve every level object, particle and visual effect.
+            mod->setSettingValue<std::string>("renderer-mode", "Engine");
+            mod->setSettingValue<bool>("sprite-fast-path", false);
+            mod->setSettingValue<bool>("skip-idle-particles", false);
+            mod->setSettingValue<bool>("cull-offscreen-particles", false);
+            mod->setSettingValue<std::string>("particle-cull-mode", "Off");
+            mod->setSettingValue<std::string>("scene-cull", "Off");
+            mod->setSettingValue<bool>("batch-culling", false);
+            mod->setSettingValue<bool>("custom-shader-filter", false);
+            mod->setSettingValue<bool>("gpu-batch-cull", false);
+            mod->setSettingValue<bool>("particle-suppression", false);
+            mod->setSettingValue<bool>("cap-particles", false);
+            mod->setSettingValue<int64_t>("particle-cap", 1000);
+            mod->setSettingValue<bool>("adaptive-cap", false);
+            mod->setSettingValue<bool>("editor-culling", false);
+            mod->setSettingValue<std::string>("editor-cull-mode", "Off");
 #ifdef GEODE_IS_WINDOWS
-            // Background throttle is deliberately NOT turned on by any profile. It drops the
-            // game to Background FPS whenever the window is not in the foreground, and the
-            // frame that follows coming back is a visible hitch - which reads exactly like the
-            // "lag spikes" users report. The setting stays available and off by default; a
-            // profile must not trade a steady frame rate for a stutter on focus change.
             mod->setSettingValue<bool>("background-throttle", false);
             mod->setSettingValue<int64_t>("background-fps", values->backgroundFps);
 #endif
-            log::info("NEXUS Ultimate: applied profile '{}' (particle cap {})", values->name, values->particleCap);
+            log::info("NEXUS Ultimate: profile '{}' preserves original level rendering", values->name);
         }
 
     }
@@ -319,14 +322,14 @@ namespace nexus {
     void resetToDefaults() {
         auto* mod = Mod::get();
         mod->setSettingValue<bool>("enabled", true);
-        mod->setSettingValue<std::string>("renderer-mode", "Optimized");
-        mod->setSettingValue<bool>("sprite-fast-path", true);
-        mod->setSettingValue<bool>("skip-idle-particles", true);
-        mod->setSettingValue<bool>("cull-offscreen-particles", true);
-        mod->setSettingValue<std::string>("particle-cull-mode", "Conservative");
+        mod->setSettingValue<std::string>("renderer-mode", "Engine");
+        mod->setSettingValue<bool>("sprite-fast-path", false);
+        mod->setSettingValue<bool>("skip-idle-particles", false);
+        mod->setSettingValue<bool>("cull-offscreen-particles", false);
+        mod->setSettingValue<std::string>("particle-cull-mode", "Off");
         mod->setSettingValue<std::string>("scene-cull", "Off");
-        mod->setSettingValue<bool>("batch-culling", true);
-        mod->setSettingValue<bool>("custom-shader-filter", true);
+        mod->setSettingValue<bool>("batch-culling", false);
+        mod->setSettingValue<bool>("custom-shader-filter", false);
         // GPU batch cull is experimental; reset turns it off.
         mod->setSettingValue<bool>("gpu-batch-cull", false);
         // Retired key: cocos2d already caches program binds, so there is nothing to opt into.
@@ -335,21 +338,21 @@ namespace nexus {
         mod->setSettingValue<bool>("particle-suppression", false);
         mod->setSettingValue<bool>("shader-trace", false);
         mod->setSettingValue<bool>("gpu-frame-time", true);
-        mod->setSettingValue<bool>("cap-particles", true);
-        mod->setSettingValue<int64_t>("particle-cap", static_cast<int64_t>(kDefaultParticleCap));
+        mod->setSettingValue<bool>("cap-particles", false);
+        mod->setSettingValue<int64_t>("particle-cap", 1000);
         mod->setSettingValue<bool>("adaptive-cap", false);
         mod->setSettingValue<int64_t>("spawn-budget", 0);
         mod->setSettingValue<bool>("no-input-delay", true);
         mod->setSettingValue<bool>("low-latency", false);
-        mod->setSettingValue<bool>("editor-culling", true);
-        mod->setSettingValue<std::string>("editor-cull-mode", "Conservative");
+        mod->setSettingValue<bool>("editor-culling", false);
+        mod->setSettingValue<std::string>("editor-cull-mode", "Off");
 #ifdef GEODE_IS_WINDOWS
         mod->setSettingValue<bool>("render-gate", false);
         mod->setSettingValue<int64_t>("render-gate-fps", 60);
-        mod->setSettingValue<bool>("background-throttle", true);
+        mod->setSettingValue<bool>("background-throttle", false);
         mod->setSettingValue<int64_t>("background-fps", kDefaultBackgroundFps);
-        mod->setSettingValue<bool>("timer-resolution", true);
-        mod->setSettingValue<bool>("disable-power-throttling", true);
+        mod->setSettingValue<bool>("timer-resolution", false);
+        mod->setSettingValue<bool>("disable-power-throttling", false);
         mod->setSettingValue<std::string>("process-priority", "Normal");
 #endif
         mod->setSettingValue<bool>("show-overlay", true);
@@ -358,10 +361,10 @@ namespace nexus {
         mod->setSettingValue<std::string>("overlay-corner", "Top Right");
         mod->setSettingValue<float>("overlay-scale", 0.5f);
         mod->setSettingValue<int64_t>("overlay-opacity", 200);
-        mod->setSettingValue<int64_t>("target-fps", 60);
+        mod->setSettingValue<int64_t>("target-fps", 90);
 
         g_lastAppliedProfile.clear();
-        mod->setSettingValue<std::string>("profile", "Balanced");
+        mod->setSettingValue<std::string>("profile", "Default");
         refreshConfig();
         log::info("NEXUS Ultimate: settings reset to defaults");
     }
