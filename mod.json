@@ -1,9 +1,14 @@
 {
   "geode": "5.11.2",
-  "gd": { "win": "2.2081" },
-  "id": "bismuth-ultimate",
-  "name": "Bismuth Ultimate",
-  "version": "v0.1.0-alpha.1",
+  "gd": {
+    "win": "2.2081"
+  },
+  "id": "eansalgado3.nexus-ultimate",
+  "name": "NEXUS Ultimate",
+  "version": "v0.2.0-alpha.1",
   "developer": "eansalgado3-cell",
-  "description": "A performance diagnostics and optimization toolkit for Geometry Dash."
+  "description": "Independent performance toolkit for Geometry Dash 2.2081: render fast paths, batch filtering, particle controls, frame pacing and diagnostics.",
+  "links": {
+    "source": "https://github.com/eansalgado3-cell/bismuth-ultimate"
+  }
 }
