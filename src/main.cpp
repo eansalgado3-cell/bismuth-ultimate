@@ -1,9 +1,31 @@
 #include <Geode/Geode.hpp>
+#include "config.hpp"
 
 using namespace geode::prelude;
 
-// Safe bootstrap: no gameplay, physics, rendering, or input hooks are modified.
+// NEXUS Ultimate entry point.
+//
+// Everything the mod does is installed by Geode hooks (CCSprite, CCParticleSystemQuad,
+// CCDirector, CCScheduler, PauseLayer). No hook is installed repeatedly and there is no
+// background thread. Loading only snapshots the settings and applies the Windows system
+// tuning; a failure in system tuning is harmless because every call is checked.
+
 $on_mod(Loaded) {
-    log::info("Bismuth Ultimate v0.1.0-alpha.1 loaded.");
-    log::info("Diagnostics bootstrap active; no gameplay or physics hooks are modified.");
+    nexus::refreshConfig();
+    auto const& cfg = nexus::config();
+    log::info(
+        "NEXUS Ultimate loaded: enabled={}, spriteFastPath={}, particles(idle={}, cull={}, cap={}/{}, budget={}), "
+        "renderGate={} ({} fps), overlay={}, profile={}",
+        cfg.enabled,
+        cfg.spriteFastPath,
+        cfg.skipIdleParticles,
+        cfg.cullOffscreenParticles,
+        cfg.capParticles,
+        cfg.particleCap,
+        cfg.spawnBudget,
+        cfg.renderGate,
+        static_cast<int>(cfg.renderGateFps),
+        cfg.showOverlay,
+        static_cast<int>(cfg.profile)
+    );
 }
