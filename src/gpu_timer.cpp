@@ -47,32 +47,44 @@ namespace nexus {
             return true;
         }
 
-        unsigned int g_query = 0;
+        constexpr unsigned int kQueryCount = 4;
+        struct QuerySlot {
+            unsigned int id = 0;
+            bool pending = false;
+            bool active = false;
+        };
+        QuerySlot g_queries[kQueryCount];
         bool g_initialized = false;
-        bool g_queryInFlight = false;
+        int g_activeSlot = -1;
 
         bool timerReady() {
-            if (g_initialized) return g_query != 0;
+            if (g_initialized) return g_queries[0].id != 0;
             g_initialized = true;
             if (!resolveGl()) return false;
-            p_genQueries(1, &g_query);
-            return g_query != 0;
+            unsigned int ids[kQueryCount]{};
+            p_genQueries(kQueryCount, ids);
+            for (unsigned int i = 0; i < kQueryCount; ++i) {
+                g_queries[i].id = ids[i];
+            }
+            return g_queries[0].id != 0;
         }
 
-        void collectResult() {
-            if (!g_queryInFlight) return;
-            // GL_QUERY_RESULT is a blocking read; ask for availability first so the frame
-            // path never waits on the GPU.
-            unsigned int available = 0;
-            p_getQueryObjectuiv(g_query, kQueryResultAvailable, &available);
-            if (!available) return;
-            unsigned int nanoseconds = 0;
-            p_getQueryObjectuiv(g_query, kQueryResult, &nanoseconds);
-            g_queryInFlight = false;
-            // A driver answer of zero or garbage never reaches the overlay.
-            double const ms = static_cast<double>(nanoseconds) / 1e6;
-            if (ms > 0.0 && ms < 1000.0) {
-                nexus::counters().gpuFrameMs.store(static_cast<float>(ms));
+        void collectResults() {
+            for (auto& slot : g_queries) {
+                if (!slot.pending) continue;
+                // Availability is checked first. If the GPU is still working, keep this
+                // query pending and use another free slot; never wait for a result.
+                unsigned int available = 0;
+                p_getQueryObjectuiv(slot.id, kQueryResultAvailable, &available);
+                if (!available) continue;
+
+                unsigned int nanoseconds = 0;
+                p_getQueryObjectuiv(slot.id, kQueryResult, &nanoseconds);
+                slot.pending = false;
+                double const ms = static_cast<double>(nanoseconds) / 1e6;
+                if (ms > 0.0 && ms < 1000.0) {
+                    nexus::counters().gpuFrameMs.store(static_cast<float>(ms));
+                }
             }
         }
     }
@@ -80,15 +92,28 @@ namespace nexus {
     void gpuTimerBegin() {
         auto const& cfg = config();
         if (!cfg.enabled || !cfg.gpuFrameTime) return;
-        collectResult();
         if (!timerReady()) return;
-        p_beginQuery(kTimeElapsedQueryTarget, g_query);
-        g_queryInFlight = true;
+        collectResults();
+
+        // A small query ring tolerates several frames of GPU latency. If every slot is
+        // still pending, skip this sample rather than reusing a query or blocking.
+        for (unsigned int i = 0; i < kQueryCount; ++i) {
+            auto& slot = g_queries[i];
+            if (slot.pending || slot.active || slot.id == 0) continue;
+            p_beginQuery(kTimeElapsedQueryTarget, slot.id);
+            slot.active = true;
+            g_activeSlot = static_cast<int>(i);
+            return;
+        }
     }
 
     void gpuTimerEnd() {
-        if (!g_queryInFlight) return;
+        if (g_activeSlot < 0) return;
+        auto& slot = g_queries[static_cast<unsigned int>(g_activeSlot)];
         p_endQuery(kTimeElapsedQueryTarget);
+        slot.active = false;
+        slot.pending = true;
+        g_activeSlot = -1;
     }
 
 }
