@@ -250,31 +250,30 @@ namespace nexus {
         }
 
         c.enabled = mod->getSettingValue<bool>("enabled");
-        c.rendererOptimized = mod->getSettingValue<std::string>("renderer-mode") != "Engine";
-        c.spriteFastPath = mod->getSettingValue<bool>("sprite-fast-path");
-        c.skipIdleParticles = mod->getSettingValue<bool>("skip-idle-particles");
-        c.cullOffscreenParticles = mod->getSettingValue<bool>("cull-offscreen-particles");
-        c.particleCull = parseCullMode(mod->getSettingValue<std::string>("particle-cull-mode"));
-        c.sceneCull = parseCullMode(mod->getSettingValue<std::string>("scene-cull"));
-        c.batchCulling = mod->getSettingValue<bool>("batch-culling");
-        c.customShaderFilter = mod->getSettingValue<bool>("custom-shader-filter");
-        c.gpuBatchCull = mod->getSettingValue<bool>("gpu-batch-cull");
-        c.particleSuppression = mod->getSettingValue<bool>("particle-suppression");
+        // Legacy rendering filters are intentionally hard-disabled. This also protects
+        // existing installations whose saved settings may still have these switches enabled.
+        c.rendererOptimized = false;
+        c.spriteFastPath = false;
+        c.skipIdleParticles = false;
+        c.cullOffscreenParticles = false;
+        c.particleCull = CullMode::Off;
+        c.sceneCull = CullMode::Off;
+        c.batchCulling = false;
+        c.customShaderFilter = false;
+        c.gpuBatchCull = false;
+        c.particleSuppression = false;
         c.shaderTrace = mod->getSettingValue<bool>("shader-trace");
         c.gpuFrameTime = mod->getSettingValue<bool>("gpu-frame-time");
         c.particleCullMargin = marginFor(c.particleCull, 128.0, 8.0);
         c.sceneCullMargin = marginFor(c.sceneCull, 160.0, 16.0);
-        c.capParticles = mod->getSettingValue<bool>("cap-particles");
-        c.adaptiveCap = mod->getSettingValue<bool>("adaptive-cap");
-
-        int64_t cap = mod->getSettingValue<int64_t>("particle-cap");
-        c.particleCap = static_cast<unsigned int>(std::clamp<int64_t>(cap, 4, 1000));
-        int64_t budget = mod->getSettingValue<int64_t>("spawn-budget");
-        c.spawnBudget = static_cast<unsigned int>(std::clamp<int64_t>(budget, 0, 200));
-
-        c.editorCulling = mod->getSettingValue<bool>("editor-culling");
-        c.editorCull = parseCullMode(mod->getSettingValue<std::string>("editor-cull-mode"));
-        c.editorCullMargin = marginFor(c.editorCull, 160.0, 16.0);
+        // Particle pool manipulation and editor culling are retired for this project.
+        c.capParticles = false;
+        c.adaptiveCap = false;
+        c.particleCap = 1000;
+        c.spawnBudget = 0;
+        c.editorCulling = false;
+        c.editorCull = CullMode::Off;
+        c.editorCullMargin = 0.0;
         c.noInputDelay = mod->getSettingValue<bool>("no-input-delay");
         c.lowLatency = mod->getSettingValue<bool>("low-latency");
 
